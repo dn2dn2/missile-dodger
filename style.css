@@ -40,11 +40,57 @@ canvas {
     z-index: 10;
 }
 
+.star-board {
+    font-size: 20px;
+    margin-top: 8px;
+    color: #ffeb3b;
+    text-shadow: 0 0 15px rgba(255, 235, 59, 0.8);
+}
+
 .destroyed-board {
     font-size: 20px;
     margin-top: 8px;
     color: #ff758c;
     text-shadow: 0 0 15px rgba(255, 117, 140, 0.8);
+}
+
+.record-board {
+    font-size: 19px;
+    margin-top: 8px;
+    color: #00f2fe;
+    text-shadow: 0 0 15px rgba(0, 242, 254, 0.8);
+}
+
+/* Nút mở BXH & Tạm dừng trong trận (HUD Top Right) */
+.hud-btn {
+    position: absolute;
+    top: 25px;
+    right: 30px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 242, 254, 0.4);
+    color: #00f2fe;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 242, 254, 0.2);
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.hud-btn:hover {
+    background: rgba(0, 242, 254, 0.2);
+    border-color: #00f2fe;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
+    color: #ffffff;
 }
 
 /* Căn giữa 100% màn hình với position: fixed */
@@ -53,22 +99,28 @@ canvas {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(1);
-    background: rgba(15, 15, 35, 0.78);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    padding: 40px 50px;
+    background: rgba(15, 15, 35, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    padding: 35px 45px;
     border-radius: 28px;
     border: 1px solid rgba(255, 255, 255, 0.18);
     text-align: center;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
     pointer-events: auto;
     transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s ease;
     opacity: 1;
     visibility: visible;
     max-width: 90vw;
-    width: 500px;
+    width: 480px;
     box-sizing: border-box;
     z-index: 100;
+}
+
+.overlay.modal-wide {
+    width: 620px;
+    max-width: 94vw;
+    padding: 30px 35px;
 }
 
 .overlay.hidden {
@@ -79,8 +131,8 @@ canvas {
 }
 
 .overlay h1 {
-    font-size: 46px;
-    margin: 0 0 15px 0;
+    font-size: 42px;
+    margin: 0 0 12px 0;
     background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #c084fc 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -98,24 +150,203 @@ canvas {
 .overlay p {
     font-size: 17px;
     color: #e2e8f0;
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     line-height: 1.6;
 }
 
 #gameOverScreen p {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     font-size: 19px;
 }
 
-#gameOverScreen p:last-of-type {
-    margin-bottom: 28px;
+/* Nhóm nút bấm */
+.btn-group {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+/* Form gửi điểm Nickname */
+.submit-section {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 18px 0 10px 0;
+}
+
+.submit-section input {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(0, 242, 254, 0.4);
+    border-radius: 30px;
+    padding: 12px 20px;
+    color: #ffffff;
+    font-size: 16px;
+    font-family: inherit;
+    outline: none;
+    width: 200px;
+    transition: all 0.25s ease;
+    text-align: center;
+}
+
+.submit-section input:focus {
+    border-color: #00f2fe;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.submit-section button {
+    padding: 12px 24px;
+    font-size: 15px;
+}
+
+.status-msg {
+    font-size: 14px;
+    color: #4ade80;
+    margin-bottom: 10px;
+    text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+}
+
+.status-msg.hidden {
+    display: none;
+}
+
+.status-msg.error {
+    color: #f87171;
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.6);
+}
+
+/* Modal Leaderboard Header & Table */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+    box-shadow: none;
+    border-radius: 50%;
+    transition: color 0.2s ease;
+}
+
+.close-btn:hover {
+    color: #ffffff;
+    transform: none;
+    box-shadow: none;
+}
+
+.lb-table-container {
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 18px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lb-table-container::-webkit-scrollbar {
+    width: 6px;
+}
+.lb-table-container::-webkit-scrollbar-thumb {
+    background: rgba(0, 242, 254, 0.3);
+    border-radius: 3px;
+}
+
+.lb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 15px;
+    text-align: center;
+}
+
+.lb-table th {
+    background: rgba(255, 255, 255, 0.06);
+    padding: 12px 8px;
+    color: #94a3b8;
+    font-weight: 600;
+    letter-spacing: 1px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.lb-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: #e2e8f0;
+}
+
+.lb-table tr:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Rank Styling */
+.rank-1 td { color: #ffd700; font-weight: bold; }
+.rank-2 td { color: #e2e8f0; font-weight: bold; }
+.rank-3 td { color: #cd7f32; font-weight: bold; }
+
+.rank-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.rank-1 .rank-badge { background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; }
+.rank-2 .rank-badge { background: rgba(226, 232, 240, 0.2); border: 1px solid #e2e8f0; }
+.rank-3 .rank-badge { background: rgba(205, 127, 50, 0.2); border: 1px solid #cd7f32; }
+
+.lb-player-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 170px;
+    text-align: left;
+}
+
+.lb-score {
+    color: #00f2fe;
+    font-weight: bold;
+}
+
+.lb-loading {
+    padding: 30px !important;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
 .legend {
     display: flex;
     justify-content: center;
     gap: 18px;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
     flex-wrap: wrap;
 }
 
@@ -134,8 +365,8 @@ canvas {
 button {
     background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
     border: none;
-    padding: 16px 45px;
-    font-size: 18px;
+    padding: 14px 36px;
+    font-size: 16px;
     font-weight: bold;
     color: white;
     border-radius: 40px;
@@ -144,6 +375,25 @@ button {
     transition: all 0.25s ease;
     font-family: inherit;
     letter-spacing: 1px;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+    color: #e2e8f0;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.btn-sm {
+    padding: 10px 22px;
+    font-size: 14px;
 }
 
 #restartBtn {
