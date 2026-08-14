@@ -818,7 +818,7 @@ function gameOver() {
         playerNameInput.value = savedName;
     }
     if (submitScoreBtn) {
-        submitScoreBtn.disabled = false;
+        submitScoreBtn.disabled = score < 10000;
         submitScoreBtn.innerText = 'GỬI ĐIỂM 🚀';
     }
     if (submitStatusMsg) {
@@ -1181,6 +1181,8 @@ function toggleLeaderboard() {
 }
 
 async function handleSubmitScore() {
+    if (score < 10000) return;
+
     const name = playerNameInput.value.trim();
     if (!name) {
         submitStatusMsg.innerText = 'Vui lòng nhập tên của bạn!';
