@@ -413,3 +413,17 @@ button:hover {
 button:active {
     transform: translateY(1px) scale(0.98);
 }
+
+button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    transform: none !important;
+    filter: grayscale(0.6);
+    pointer-events: auto;
+}
+
+button:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
