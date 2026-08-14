@@ -3,25 +3,46 @@ const ctx = canvas.getContext('2d');
 const scoreVal = document.getElementById('scoreVal');
 const starVal = document.getElementById('starVal');
 const destroyedVal = document.getElementById('destroyedVal');
+const topRecordVal = document.getElementById('topRecordVal');
+const inGameLbBtn = document.getElementById('inGameLbBtn');
+
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
+const startLbBtn = document.getElementById('startLbBtn');
+const gameOverLbBtn = document.getElementById('gameOverLbBtn');
+
 const finalScoreVal = document.getElementById('finalScoreVal');
 const finalDestroyedVal = document.getElementById('finalDestroyedVal');
+const playerNameInput = document.getElementById('playerNameInput');
+const submitScoreBtn = document.getElementById('submitScoreBtn');
+const submitStatusMsg = document.getElementById('submitStatusMsg');
+
+const leaderboardModal = document.getElementById('leaderboardModal');
+const lbTableBody = document.getElementById('lbTableBody');
+const closeLbBtn = document.getElementById('closeLbBtn');
+const refreshLbBtn = document.getElementById('refreshLbBtn');
+const resumeFromLbBtn = document.getElementById('resumeFromLbBtn');
 
 let width, height;
 let gameRunning = false;
+let isPaused = false;
+let isGameOverAnimating = false;
 let score = 0;
 let starsCollected = 0;
 let missilesDestroyed = 0;
 let timeAlive = 0; // ms
 let lastTime = 0;
 
+let screenShakeTimer = 0;
+let screenShakeIntensity = 0;
+
 let player;
 let missiles = [];
 let items = [];
 let particles = [];
+let shockwaves = [];
 let bgStars = [];
 let currentStar = null;
 
@@ -644,10 +665,92 @@ class Particle {
     }
 }
 
+class Shockwave {
+    constructor(x, y, color = '#00f2fe', maxRadius = 180, duration = 0.6) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.maxRadius = maxRadius;
+        this.radius = 5;
+        this.maxLife = duration;
+        this.life = duration;
+    }
+
+    update(dt) {
+        this.life -= dt / 1000;
+        let progress = 1 - Math.max(0, this.life / this.maxLife);
+        this.radius = 5 + progress * (this.maxRadius - 5);
+    }
+
+    draw(ctx) {
+        if (this.life <= 0) return;
+        ctx.save();
+        let alpha = Math.max(0, this.life / this.maxLife);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 4 * alpha;
+        ctx.shadowBlur = 20 * alpha;
+        ctx.shadowColor = this.color;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+function triggerScreenShake(intensity = 15, duration = 0.4) {
+    screenShakeIntensity = intensity;
+    screenShakeTimer = duration;
+}
+
 function spawnExplosion(x, y, color) {
     for (let i = 0; i < 40; i++) {
         particles.push(new Particle(x, y, color, Math.random() * 4 + 1, 0.5 + Math.random() * 0.8));
     }
+}
+
+function spawnMegaCrashExplosion(x, y) {
+    // 1. Rung lắc màn hình điện ảnh
+    triggerScreenShake(20, 0.5);
+
+    // 2. Vòng sóng kích nổ đa tầng phát sáng (Shockwaves)
+    shockwaves.push(new Shockwave(x, y, '#00f2fe', 220, 0.7));
+    shockwaves.push(new Shockwave(x, y, '#ff0844', 160, 0.55));
+    shockwaves.push(new Shockwave(x, y, '#ffffff', 100, 0.35));
+
+    // 3. Lõi cầu lửa nhiệt độ cao (Fireball core)
+    for (let i = 0; i < 60; i++) {
+        let colors = ['#ffffff', '#ffeb3b', '#ff7b00', '#ff0844', '#00f2fe'];
+        let color = colors[Math.floor(Math.random() * colors.length)];
+        particles.push(new Particle(x, y, color, Math.random() * 7 + 3, 0.7 + Math.random() * 0.8));
+    }
+
+    // 4. Mảnh vỡ kim loại và tia lửa văng xa (High-speed Debris)
+    for (let i = 0; i < 80; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = Math.random() * 380 + 120;
+        let vx = Math.cos(angle) * speed;
+        let vy = Math.sin(angle) * speed;
+        let color = Math.random() > 0.4 ? '#64748b' : (Math.random() > 0.5 ? '#ffaa00' : '#00f2fe');
+        particles.push(new Particle(x, y, color, Math.random() * 5 + 2, 0.8 + Math.random() * 0.9, vx, vy));
+    }
+
+    // 5. Chuỗi nổ phụ chậm (Secondary cluster explosions)
+    setTimeout(() => {
+        let ox = x + (Math.random() * 60 - 30);
+        let oy = y + (Math.random() * 60 - 30);
+        shockwaves.push(new Shockwave(ox, oy, '#ffaa00', 130, 0.45));
+        spawnExplosion(ox, oy, '#ff4b1f');
+        spawnExplosion(ox, oy, '#ffff00');
+    }, 120);
+
+    setTimeout(() => {
+        let ox = x + (Math.random() * 70 - 35);
+        let oy = y + (Math.random() * 70 - 35);
+        shockwaves.push(new Shockwave(ox, oy, '#00f2fe', 150, 0.5));
+        spawnExplosion(ox, oy, '#00f2fe');
+        spawnExplosion(ox, oy, '#ffffff');
+    }, 260);
 }
 
 function checkCollision(a, b) {
@@ -662,182 +765,244 @@ function init() {
     missiles = [];
     items = [];
     particles = [];
+    shockwaves = [];
     currentStar = new Star();
     score = 0;
     starsCollected = 0;
+    missilesDestroyed = 0;
     timeAlive = 0;
+    isPaused = false;
+    isGameOverAnimating = false;
+    screenShakeTimer = 0;
+    screenShakeIntensity = 0;
     missileSpawnTimer = 0;
     missileSpawnInterval = 1800; 
     itemSpawnTimer = 0;
     itemSpawnInterval = 20000; 
     
     scoreVal.innerText = score;
-    if(starVal) starVal.innerText = starsCollected;
-    missilesDestroyed = 0;
-    if(destroyedVal) destroyedVal.innerText = missilesDestroyed;
+    if (starVal) starVal.innerText = starsCollected;
+    if (destroyedVal) destroyedVal.innerText = missilesDestroyed;
     
     mouse.x = width / 2;
     mouse.y = height / 2;
+    updateTopRecordDisplay();
 }
 
 function startGame() {
     init();
     gameRunning = true;
+    isPaused = false;
+    isGameOverAnimating = false;
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
+    leaderboardModal.classList.add('hidden');
     lastTime = performance.now();
     requestAnimationFrame(gameLoop);
 }
 
 function gameOver() {
     gameRunning = false;
-    spawnExplosion(player.x, player.y, '#ffffff');
-    spawnExplosion(player.x, player.y, '#00f2fe');
+    isPaused = false;
+    isGameOverAnimating = true;
+
+    // Kích hoạt vụ nổ điện ảnh máy bay rơi
+    spawnMegaCrashExplosion(player.x, player.y);
+
     finalScoreVal.innerText = score;
-    if(finalDestroyedVal) finalDestroyedVal.innerText = missilesDestroyed;
+    if (finalDestroyedVal) finalDestroyedVal.innerText = missilesDestroyed;
+    
+    // Tự động điền tên người chơi đã lưu
+    const savedName = localStorage.getItem('missile_pilot_name') || '';
+    if (playerNameInput) {
+        playerNameInput.value = savedName;
+    }
+    if (submitScoreBtn) {
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.innerText = 'GỬI ĐIỂM 🚀';
+    }
+    if (submitStatusMsg) {
+        submitStatusMsg.classList.add('hidden');
+    }
+    
     setTimeout(() => {
         gameOverScreen.classList.remove('hidden');
-    }, 1500);
+        isGameOverAnimating = false;
+    }, 1600);
 }
 
 function gameLoop(currentTime) {
-    if (!gameRunning) return;
+    if ((!gameRunning && !isGameOverAnimating) || isPaused) return;
 
     let dt = currentTime - lastTime;
     lastTime = currentTime;
-    timeAlive += dt;
+
+    // Tính toán rung lắc màn hình (Screen Shake)
+    let shakeX = 0;
+    let shakeY = 0;
+    if (screenShakeTimer > 0) {
+        screenShakeTimer -= dt / 1000;
+        let progress = Math.max(0, screenShakeTimer);
+        let curIntensity = screenShakeIntensity * progress;
+        shakeX = (Math.random() * 2 - 1) * curIntensity;
+        shakeY = (Math.random() * 2 - 1) * curIntensity;
+    }
+
+    ctx.save();
+    if (shakeX !== 0 || shakeY !== 0) {
+        ctx.translate(shakeX, shakeY);
+    }
 
     drawBackground(dt);
 
-    let currentMissileBaseSpeed = 120 + (timeAlive / 1000) * 1.5;
+    if (gameRunning) {
+        timeAlive += dt;
 
-    missileSpawnTimer += dt;
-    if (missileSpawnTimer > missileSpawnInterval) {
-        let purpleChance = Math.min(0.40, 0.15 + (timeAlive / 1000) * 0.003);
-        
-        let multiSpawnRoll = Math.random();
-        let spawnCount = 1;
-        
-        let tripleChance = Math.min(0.25, 0.08 + (timeAlive / 1000) * 0.002);
-        let doubleChance = Math.min(0.40, 0.20 + (timeAlive / 1000) * 0.003);
+        let currentMissileBaseSpeed = 120 + (timeAlive / 1000) * 1.5;
 
-        if (multiSpawnRoll < tripleChance) {
-            spawnCount = 3;
-        } else if (multiSpawnRoll < tripleChance + doubleChance) {
-            spawnCount = 2;
-        }
-
-        for (let s = 0; s < spawnCount; s++) {
-            let isPurple = Math.random() < purpleChance;
-            missiles.push(new Missile(currentMissileBaseSpeed, isPurple));
-        }
-
-        missileSpawnTimer = 0;
-        missileSpawnInterval = Math.max(400, missileSpawnInterval - 8); 
-    }
-
-    itemSpawnTimer += dt;
-    if (itemSpawnTimer > itemSpawnInterval) {
-        items.push(new Item());
-        itemSpawnTimer = 0;
-        itemSpawnInterval = 20000 + Math.random() * 10000;
-    }
-
-    if (Math.floor(timeAlive / 100) > Math.floor((timeAlive - dt) / 100)) {
-        score += 1;
-        scoreVal.innerText = score;
-    }
-
-    player.update(dt);
-    if(player.ghostTimer <= 0 || Math.floor(currentTime / 150) % 2 === 0) {
-       player.draw(ctx);
-    }
-    
-    if (currentStar) {
-        currentStar.update(dt);
-        currentStar.draw(ctx);
-        
-        if (checkCollision(player, currentStar)) {
-            starsCollected++;
-            if (starVal) starVal.innerText = starsCollected;
+        missileSpawnTimer += dt;
+        if (missileSpawnTimer > missileSpawnInterval) {
+            let purpleChance = Math.min(0.40, 0.15 + (timeAlive / 1000) * 0.003);
             
-            score += 500;
-            scoreVal.innerText = score;
+            let multiSpawnRoll = Math.random();
+            let spawnCount = 1;
             
-            spawnExplosion(currentStar.x, currentStar.y, '#ffeb3b');
-            currentStar = new Star();
-        } else if (currentStar.life <= 0) {
-            spawnExplosion(currentStar.x, currentStar.y, '#c084fc');
-            missiles.push(new Missile(currentMissileBaseSpeed, true, currentStar.x, currentStar.y));
-            currentStar = new Star();
-        }
-    }
+            let tripleChance = Math.min(0.25, 0.08 + (timeAlive / 1000) * 0.002);
+            let doubleChance = Math.min(0.40, 0.20 + (timeAlive / 1000) * 0.003);
 
-    for (let i = items.length - 1; i >= 0; i--) {
-        let item = items[i];
-        item.update(dt);
-        item.draw(ctx);
-
-        if (checkCollision(player, item)) {
-            if (item.type === 'speed') player.speedBoostTimer = 4000;
-            if (item.type === 'shield') player.shield = true;
-            if (item.type === 'ghost') player.ghostTimer = 4500;
-            
-            score += 50;
-            scoreVal.innerText = score;
-            spawnExplosion(item.x, item.y, '#ffffff');
-            items.splice(i, 1);
-            continue;
-        }
-
-        if (item.life <= 0) {
-            items.splice(i, 1);
-        }
-    }
-
-    for (let i = missiles.length - 1; i >= 0; i--) {
-        let m1 = missiles[i];
-        m1.update(dt);
-        m1.draw(ctx);
-
-        if (player.ghostTimer <= 0 && checkCollision(player, m1)) {
-            if (player.shield) {
-                player.shield = false; 
-                spawnExplosion(m1.x, m1.y, '#00ff00');
-                missiles.splice(i, 1);
-                missilesDestroyed++;
-                if (destroyedVal) destroyedVal.innerText = missilesDestroyed;
-                score += 100;
-                continue;
-            } else {
-                gameOver();
-                for(let p of particles) { p.update(dt); p.draw(ctx); }
-                return;
+            if (multiSpawnRoll < tripleChance) {
+                spawnCount = 3;
+            } else if (multiSpawnRoll < tripleChance + doubleChance) {
+                spawnCount = 2;
             }
+
+            for (let s = 0; s < spawnCount; s++) {
+                let isPurple = Math.random() < purpleChance;
+                missiles.push(new Missile(currentMissileBaseSpeed, isPurple));
+            }
+
+            missileSpawnTimer = 0;
+            missileSpawnInterval = Math.max(400, missileSpawnInterval - 8); 
         }
 
-        let destroyed = false;
-        for (let j = i - 1; j >= 0; j--) {
-            let m2 = missiles[j];
-            if (checkCollision(m1, m2)) {
-                let explosionColor = (m1.isPurple || m2.isPurple) ? '#c084fc' : '#ff0844';
-                spawnExplosion(m1.x, m1.y, explosionColor);
-                spawnExplosion(m1.x, m1.y, '#ffff00');
-                missiles.splice(i, 1); 
-                missiles.splice(j, 1); 
-                missilesDestroyed += 2;
-                if (destroyedVal) destroyedVal.innerText = missilesDestroyed;
+        itemSpawnTimer += dt;
+        if (itemSpawnTimer > itemSpawnInterval) {
+            items.push(new Item());
+            itemSpawnTimer = 0;
+            itemSpawnInterval = 20000 + Math.random() * 10000;
+        }
+
+        if (Math.floor(timeAlive / 100) > Math.floor((timeAlive - dt) / 100)) {
+            score += 1;
+            scoreVal.innerText = score;
+        }
+
+        player.update(dt);
+        if (player.ghostTimer <= 0 || Math.floor(currentTime / 150) % 2 === 0) {
+           player.draw(ctx);
+        }
+        
+        if (currentStar) {
+            currentStar.update(dt);
+            currentStar.draw(ctx);
+            
+            if (checkCollision(player, currentStar)) {
+                starsCollected++;
+                if (starVal) starVal.innerText = starsCollected;
                 
-                score += (m1.isPurple || m2.isPurple) ? 300 : 150; 
+                score += 500;
                 scoreVal.innerText = score;
-                destroyed = true;
-                i--; 
-                break;
+                
+                spawnExplosion(currentStar.x, currentStar.y, '#ffeb3b');
+                shockwaves.push(new Shockwave(currentStar.x, currentStar.y, '#ffeb3b', 80, 0.35));
+                currentStar = new Star();
+            } else if (currentStar.life <= 0) {
+                spawnExplosion(currentStar.x, currentStar.y, '#c084fc');
+                shockwaves.push(new Shockwave(currentStar.x, currentStar.y, '#c084fc', 90, 0.4));
+                missiles.push(new Missile(currentMissileBaseSpeed, true, currentStar.x, currentStar.y));
+                currentStar = new Star();
             }
         }
-        if (destroyed) continue;
+
+        for (let i = items.length - 1; i >= 0; i--) {
+            let item = items[i];
+            item.update(dt);
+            item.draw(ctx);
+
+            if (checkCollision(player, item)) {
+                if (item.type === 'speed') player.speedBoostTimer = 4000;
+                if (item.type === 'shield') player.shield = true;
+                if (item.type === 'ghost') player.ghostTimer = 4500;
+                
+                score += 50;
+                scoreVal.innerText = score;
+                spawnExplosion(item.x, item.y, '#ffffff');
+                shockwaves.push(new Shockwave(item.x, item.y, '#00f2fe', 70, 0.3));
+                items.splice(i, 1);
+                continue;
+            }
+
+            if (item.life <= 0) {
+                items.splice(i, 1);
+            }
+        }
+
+        for (let i = missiles.length - 1; i >= 0; i--) {
+            let m1 = missiles[i];
+            m1.update(dt);
+            m1.draw(ctx);
+
+            if (player.ghostTimer <= 0 && checkCollision(player, m1)) {
+                if (player.shield) {
+                    player.shield = false; 
+                    spawnExplosion(m1.x, m1.y, '#00ff00');
+                    shockwaves.push(new Shockwave(m1.x, m1.y, '#00ff00', 100, 0.4));
+                    triggerScreenShake(8, 0.25);
+                    missiles.splice(i, 1);
+                    missilesDestroyed++;
+                    if (destroyedVal) destroyedVal.innerText = missilesDestroyed;
+                    score += 100;
+                    continue;
+                } else {
+                    gameOver();
+                    break;
+                }
+            }
+
+            let destroyed = false;
+            for (let j = i - 1; j >= 0; j--) {
+                let m2 = missiles[j];
+                if (checkCollision(m1, m2)) {
+                    let explosionColor = (m1.isPurple || m2.isPurple) ? '#c084fc' : '#ff0844';
+                    spawnExplosion(m1.x, m1.y, explosionColor);
+                    spawnExplosion(m1.x, m1.y, '#ffff00');
+                    shockwaves.push(new Shockwave(m1.x, m1.y, explosionColor, 110, 0.4));
+                    triggerScreenShake(6, 0.2);
+                    missiles.splice(i, 1); 
+                    missiles.splice(j, 1); 
+                    missilesDestroyed += 2;
+                    if (destroyedVal) destroyedVal.innerText = missilesDestroyed;
+                    
+                    score += (m1.isPurple || m2.isPurple) ? 300 : 150; 
+                    scoreVal.innerText = score;
+                    destroyed = true;
+                    i--; 
+                    break;
+                }
+            }
+            if (destroyed) continue;
+        }
     }
 
+    // Cập nhật và vẽ Vòng sóng kích nổ (Shockwaves)
+    for (let i = shockwaves.length - 1; i >= 0; i--) {
+        let sw = shockwaves[i];
+        sw.update(dt);
+        sw.draw(ctx);
+        if (sw.life <= 0) shockwaves.splice(i, 1);
+    }
+
+    // Cập nhật và vẽ Hạt khói lửa (Particles)
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
         p.update(dt);
@@ -845,8 +1010,243 @@ function gameLoop(currentTime) {
         if (p.life <= 0) particles.splice(i, 1);
     }
 
-    requestAnimationFrame(gameLoop);
+    ctx.restore();
+
+    if (gameRunning || isGameOverAnimating) {
+        requestAnimationFrame(gameLoop);
+    }
 }
 
+// ==========================================
+// CẤU HÌNH & XỬ LÝ BẢNG XẾP HẠNG (GLOBAL LEADERBOARD)
+// ==========================================
+const firebaseConfig = {
+    apiKey: "AIzaSyAh-YXJYfdnm0qpJR_K6opUQqIu2gHDu2g",
+    authDomain: "missile-dodger.firebaseapp.com",
+    projectId: "missile-dodger",
+    storageBucket: "missile-dodger.firebasestorage.app",
+    messagingSenderId: "26192778766",
+    appId: "1:26192778766:web:bac9adde46a1b31dc2ce5f",
+    measurementId: "G-32WVGN9GKT"
+};
+
+let db = null;
+let isFirebaseReady = false;
+
+try {
+    if (typeof firebase !== 'undefined' && firebaseConfig.projectId) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        isFirebaseReady = true;
+        console.log("Firebase Leaderboard đã kết nối thành công.");
+    }
+} catch (e) {
+    console.warn("Chưa cấu hình Firebase hoặc lỗi kết nối, chuyển sang Local Fallback:", e);
+}
+
+const DEFAULT_SCORES = [];
+
+function getLocalScores() {
+    try {
+        const data = localStorage.getItem('missile_global_scores');
+        if (data) return JSON.parse(data);
+    } catch (e) {}
+    return [];
+}
+
+function saveLocalScores(scores) {
+    try {
+        localStorage.setItem('missile_global_scores', JSON.stringify(scores));
+    } catch (e) {}
+}
+
+async function fetchLeaderboard() {
+    if (isFirebaseReady && db) {
+        try {
+            const snapshot = await db.collection('leaderboard')
+                .orderBy('score', 'desc')
+                .limit(10)
+                .get();
+            let records = [];
+            snapshot.forEach(doc => records.push(doc.data()));
+            return records;
+        } catch (err) {
+            console.warn("Lỗi đọc Firebase, chuyển sang Local Fallback:", err);
+        }
+    }
+    let localList = getLocalScores();
+    localList.sort((a, b) => b.score - a.score);
+    return localList.slice(0, 10);
+}
+
+async function submitScoreToCloud(entry) {
+    if (isFirebaseReady && db) {
+        try {
+            await db.collection('leaderboard').add({
+                ...entry,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (err) {
+            console.warn("Lỗi ghi Firebase, lưu vào Local Fallback:", err);
+        }
+    }
+    let list = getLocalScores();
+    list.push(entry);
+    list.sort((a, b) => b.score - a.score);
+    saveLocalScores(list.slice(0, 50));
+    return true;
+}
+
+function escapeHtml(text) {
+    let div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+}
+
+function renderLeaderboardTable(records) {
+    if (!lbTableBody) return;
+    if (!records || records.length === 0) {
+        lbTableBody.innerHTML = `<tr><td colspan="5" class="lb-loading" style="padding: 35px 15px !important; line-height: 1.6;">Chưa có kỷ lục nào được ghi nhận.<br><span style="color: #00f2fe;">Hãy là cơ trưởng đầu tiên ghi tên lên bảng vàng! 🚀</span></td></tr>`;
+        return;
+    }
+    
+    let html = '';
+    records.forEach((r, idx) => {
+        let rankClass = idx === 0 ? 'rank-1' : (idx === 1 ? 'rank-2' : (idx === 2 ? 'rank-3' : ''));
+        let rankBadge = idx === 0 ? '🥇 1' : (idx === 1 ? '🥈 2' : (idx === 2 ? '🥉 3' : `#${idx + 1}`));
+        let stars = r.stars || 0;
+        let destroyed = r.destroyed || 0;
+        
+        html += `
+            <tr class="${rankClass}">
+                <td><span class="rank-badge">${rankBadge}</span></td>
+                <td class="lb-player-name">${escapeHtml(r.name || 'Ẩn danh')}</td>
+                <td class="lb-score">${(r.score || 0).toLocaleString()}</td>
+                <td>⭐ ${stars}</td>
+                <td>💥 ${destroyed}</td>
+            </tr>
+        `;
+    });
+    lbTableBody.innerHTML = html;
+}
+
+async function updateTopRecordDisplay() {
+    try {
+        const records = await fetchLeaderboard();
+        if (topRecordVal) {
+            if (records && records.length > 0) {
+                topRecordVal.innerText = `${records[0].name} (${records[0].score.toLocaleString()})`;
+            } else {
+                topRecordVal.innerText = 'Chưa có';
+            }
+        }
+    } catch (e) {
+        if (topRecordVal) topRecordVal.innerText = 'Chưa có';
+    }
+}
+
+async function openLeaderboard() {
+    if (gameRunning && !isPaused) {
+        isPaused = true;
+    }
+    leaderboardModal.classList.remove('hidden');
+    lbTableBody.innerHTML = `<tr><td colspan="5" class="lb-loading">Đang kết nối vệ tinh...</td></tr>`;
+    const records = await fetchLeaderboard();
+    renderLeaderboardTable(records);
+    if (topRecordVal) {
+        if (records && records.length > 0) {
+            topRecordVal.innerText = `${records[0].name} (${records[0].score.toLocaleString()})`;
+        } else {
+            topRecordVal.innerText = 'Chưa có';
+        }
+    }
+}
+
+function closeLeaderboard() {
+    leaderboardModal.classList.add('hidden');
+    if (gameRunning && isPaused) {
+        isPaused = false;
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+function toggleLeaderboard() {
+    if (leaderboardModal.classList.contains('hidden')) {
+        openLeaderboard();
+    } else {
+        closeLeaderboard();
+    }
+}
+
+async function handleSubmitScore() {
+    const name = playerNameInput.value.trim();
+    if (!name) {
+        submitStatusMsg.innerText = 'Vui lòng nhập tên của bạn!';
+        submitStatusMsg.className = 'status-msg error';
+        submitStatusMsg.classList.remove('hidden');
+        return;
+    }
+    
+    submitScoreBtn.disabled = true;
+    submitScoreBtn.innerText = 'Đang gửi...';
+    
+    try {
+        localStorage.setItem('missile_pilot_name', name);
+        await submitScoreToCloud({
+            name: name,
+            score: score,
+            stars: starsCollected,
+            destroyed: missilesDestroyed,
+            date: new Date().toLocaleDateString('vi-VN')
+        });
+        
+        submitStatusMsg.innerText = 'Đã lưu điểm thành công! 🎉';
+        submitStatusMsg.className = 'status-msg';
+        submitStatusMsg.classList.remove('hidden');
+        submitScoreBtn.innerText = 'ĐÃ GỬI ✔';
+        
+        updateTopRecordDisplay();
+        setTimeout(() => {
+            openLeaderboard();
+        }, 800);
+    } catch (e) {
+        submitStatusMsg.innerText = 'Có lỗi khi gửi, đã lưu tạm vào máy!';
+        submitStatusMsg.className = 'status-msg error';
+        submitStatusMsg.classList.remove('hidden');
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.innerText = 'GỬI LẠI 🚀';
+    }
+}
+
+// Bắt sự kiện
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+if (startLbBtn) startLbBtn.addEventListener('click', openLeaderboard);
+if (gameOverLbBtn) gameOverLbBtn.addEventListener('click', openLeaderboard);
+if (inGameLbBtn) inGameLbBtn.addEventListener('click', toggleLeaderboard);
+if (closeLbBtn) closeLbBtn.addEventListener('click', closeLeaderboard);
+if (resumeFromLbBtn) resumeFromLbBtn.addEventListener('click', closeLeaderboard);
+if (refreshLbBtn) {
+    refreshLbBtn.addEventListener('click', async () => {
+        lbTableBody.innerHTML = `<tr><td colspan="5" class="lb-loading">Đang làm mới dữ liệu...</td></tr>`;
+        const records = await fetchLeaderboard();
+        renderLeaderboardTable(records);
+    });
+}
+if (submitScoreBtn) submitScoreBtn.addEventListener('click', handleSubmitScore);
+if (playerNameInput) {
+    playerNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleSubmitScore();
+    });
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyP' || e.key === 'Escape') {
+        toggleLeaderboard();
+    }
+});
+
+// Khởi chạy lấy kỷ lục ban đầu
+updateTopRecordDisplay();
