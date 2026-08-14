@@ -1,0 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #060614;
+    overflow: hidden;
+    font-family: 'Outfit', sans-serif;
+    color: white;
+    user-select: none;
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: crosshair;
+}
+
+#ui-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+}
+
+#scoreBoard {
+    position: absolute;
+    top: 25px;
+    left: 30px;
+    font-size: 26px;
+    font-weight: bold;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+    pointer-events: auto;
+    letter-spacing: 1.5px;
+    z-index: 10;
+}
+
+.destroyed-board {
+    font-size: 20px;
+    margin-top: 8px;
+    color: #ff758c;
+    text-shadow: 0 0 15px rgba(255, 117, 140, 0.8);
+}
+
+/* Căn giữa 100% màn hình với position: fixed */
+.overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    background: rgba(15, 15, 35, 0.78);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 40px 50px;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-align: center;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+    pointer-events: auto;
+    transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s ease;
+    opacity: 1;
+    visibility: visible;
+    max-width: 90vw;
+    width: 500px;
+    box-sizing: border-box;
+    z-index: 100;
+}
+
+.overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.92);
+}
+
+.overlay h1 {
+    font-size: 46px;
+    margin: 0 0 15px 0;
+    background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #c084fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0px 0px 15px rgba(79, 172, 254, 0.6));
+    letter-spacing: 2px;
+}
+
+.overlay h1.text-danger {
+    background: linear-gradient(135deg, #ff0844 0%, #ff758c 50%, #ffb199 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0px 0px 15px rgba(255, 8, 68, 0.6));
+}
+
+.overlay p {
+    font-size: 17px;
+    color: #e2e8f0;
+    margin-bottom: 25px;
+    line-height: 1.6;
+}
+
+#gameOverScreen p {
+    margin-bottom: 12px;
+    font-size: 19px;
+}
+
+#gameOverScreen p:last-of-type {
+    margin-bottom: 28px;
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+button {
+    background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
+    border: none;
+    padding: 16px 45px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0, 242, 254, 0.4);
+    transition: all 0.25s ease;
+    font-family: inherit;
+    letter-spacing: 1px;
+}
+
+#restartBtn {
+    background: linear-gradient(45deg, #ff0844 0%, #ffb199 100%);
+    box-shadow: 0 10px 25px rgba(255, 8, 68, 0.4);
+}
+
+button:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 15px 30px rgba(0, 242, 254, 0.6);
+}
+
+#restartBtn:hover {
+    box-shadow: 0 15px 30px rgba(255, 8, 68, 0.6);
+}
+
+button:active {
+    transform: translateY(1px) scale(0.98);
+}

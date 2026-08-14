@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chiến Cơ Né Tên Lửa (Missile Dodger)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">
+        <div id="scoreBoard">
+            <div>Điểm: <span id="scoreVal">0</span></div>
+            <div style="font-size: 20px; margin-top: 8px; color: #ffeb3b; text-shadow: 0 0 15px rgba(255, 235, 59, 0.8);">⭐ Số sao: <span id="starVal">0</span></div>
+            <div class="destroyed-board">💥 Tiêu diệt: <span id="destroyedVal">0</span></div>
+        </div>
+        
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <h1>Missile Dodger</h1>
+            <p>Di chuyển chuột để điều khiển máy bay. <br>Thu thập vật phẩm, sinh tồn và lừa cho tên lửa đâm vào nhau!</p>
+            <div class="legend">
+                <div class="legend-item">⚡ Tăng tốc</div>
+                <div class="legend-item">🛡️ Lớp khiên</div>
+                <div class="legend-item">👻 Tàng hình</div>
+            </div>
+            <button id="startBtn">BẮT ĐẦU CHƠI</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <h1 class="text-danger">MÁY BAY ĐÃ RƠI</h1>
+            <p>Điểm số cuối cùng: <span id="finalScoreVal">0</span></p>
+            <p>Tên lửa đã tiêu diệt: <span id="finalDestroyedVal">0</span></p>
+            <button id="restartBtn">CHƠI LẠI</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
